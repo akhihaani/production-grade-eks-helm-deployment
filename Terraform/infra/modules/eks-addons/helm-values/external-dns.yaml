@@ -11,3 +11,16 @@ serviceAccount:
 
 domainFilters:
 - memos.abuniyyah.uk
+
+policy: sync
+# `sync` lets ExternalDNS delete a record when its source ingress/service is
+# removed, instead of only ever adding/updating them (`upsert-only`, the default).
+# Keeps the hosted zone from accumulating orphaned records over time.
+
+# Ownership-tracking TXT records get a "<type>-." prefix so they sit as a
+# SUBDOMAIN of the record they track. Without this, the owner TXT for the apex
+# record (memos.abuniyyah.uk) would be a-memos.abuniyyah.uk — a sibling OUTSIDE
+# this hosted zone, which ExternalDNS can't create, leaving the apex record
+# unowned and unmanaged. The trailing "." keeps it in-zone: a-.memos.abuniyyah.uk.
+# NOTE: set this ONCE at deploy time — changing it later orphans existing owner TXTs.
+txtPrefix: "%{record_type}-."
