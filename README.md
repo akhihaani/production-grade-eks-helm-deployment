@@ -21,11 +21,18 @@ The infrastructure is provisioned using Terraform for consistency and scalabilit
 CI/CD pipelines have been implemented using GitHub Actions to automate the deployment process, and monitoring tools like Prometheus and Grafana are configured to provide real-time insights into application performance and infrastructure health.
 
 ### Tech Stack
-- Kubernetes: Orchestrates our containerised workloads for scalability and reliability
-- ArgoCD: Implementing GitOps for automated and eclarative continuous delivery
+
+- Terraform & Terragrunt: Provisions all AWS infrastructure as reusable, DRY modules with S3-managed remote state
+- GitHub Actions: Runs the CI/CD pipelines — security scans, image build & push, and cluster provisioning
+- Kubernetes (Amazon EKS): Orchestrates our containerised workloads for scalability and reliability
+- Docker: Containerises the Memos app to ensure a consistent runtime environment
+- Helm: Packages the application and platform add-ons as versioned, configurable releases
+- ArgoCD: Implementing GitOps for automated and declarative continuous delivery
+- NGINX Ingress Controller: Routes external HTTPS traffic to the correct in-cluster services
+- cert-manager: Automates TLS certificate issuance and renewal via Let's Encrypt
+- ExternalDNS: Keeps Route 53 DNS records in sync with cluster ingresses automatically
 - Prometheus: Collects and queries app and infrastructure metrics for monitoring
 - Grafana: Visualises metrics and provides actionable insights through customised dashboards
-- Docker: Containerises the Memos app to ensure a consistent runtime environment
 
 ## Repository Structure
 ```
@@ -173,6 +180,7 @@ cd ../..
 The bootstrap output lists 4 Route 53 nameservers. Add them as NS records at your domain registrar for the domain (or subdomain) you own — this hands DNS authority to Route 53. TLS certificate issuance will not succeed until this is done.
 
 **6. Run the pipelines**
+
 Because this is a fork, enable workflows in your repo's **Actions** tab. Then run them in order:
 
 1. **`cluster.yaml`** — provisions the VPC + EKS cluster (Terragrunt) and installs NGINX ingress, cert-manager issuers, the ArgoCD Application, and the Grafana dashboards.
@@ -205,9 +213,7 @@ The certificate is trusted by default (production issuer). If you switched to `l
 
 **8. Access the cluster (optional — inspect the runtime)**
 
-The site works without this, but connecting with `kubectl` lets you inspect the running cluster (pods, the ArgoCD Application, cert-manager `Certificate`s, Grafana)
-The cluster uses API-only authentication and was created by the **CI role**, so your local IAM identity starts with **no access**.
-Grant it an access entry, then connect:
+The site works without this, but connecting with `kubectl` lets you inspect the running cluster (pods, the ArgoCD Application, cert-manager `Certificate`s, Grafana). The cluster uses API-only authentication and was created by the **CI role**, so your local IAM identity starts with **no access** — grant it an access entry, then connect:
 
 ```bash
 CLUSTER=memos-eks-cluster
