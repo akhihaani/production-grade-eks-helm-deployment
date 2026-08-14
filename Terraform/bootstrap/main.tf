@@ -1,4 +1,4 @@
-# S3 Bucket + DynamoDB for tfstate
+# S3 Bucket for tfstate
 
 resource "aws_s3_bucket" "memos_state" {
   bucket = "memos-eks-tfstate-${var.account_id}"
