@@ -28,6 +28,7 @@ REPO="${REPO:-$OLD_REPO}"
 FILES=(
   Terraform/bootstrap/terraform.tfvars
   Terraform/bootstrap/backend.tf.disabled          # forked repo ships this; renamed to backend.tf after first apply
+  Terraform/bootstrap/backend.tf
   Terraform/root.hcl
   Terraform/infra/live/eks-addons/terragrunt.hcl
   Terraform/infra/modules/eks-addons/eks-addons.tf
@@ -61,6 +62,22 @@ done
 if ! gh auth status >/dev/null 2>&1; then
   echo "Error: gh is not authenticated. Run 'gh auth login' and re-run this script." >&2
   exit 1
+fi
+
+# --- 5b. Immutable-OIDC numeric IDs: derive from the porter's repo, write into tfvars ---
+# GitHub's immutable subject claim (July 2026+) encodes the owner + repo numeric IDs,
+# which differ for every fork, so they are fetched rather than string-swapped.
+OWNER="${REPO%%/*}"
+OWNER_ID=$(gh api "users/${OWNER}" --jq '.id' 2>/dev/null || true)
+REPO_ID=$(gh api "repos/${REPO}" --jq '.id' 2>/dev/null || true)
+if [[ -n "$OWNER_ID" && -n "$REPO_ID" ]]; then
+  sed -i.bak -E "s|^(github_owner_id[[:space:]]*=).*|\\1 \"${OWNER_ID}\"|" "$TFVARS"
+  sed -i.bak -E "s|^(github_repo_id[[:space:]]*=).*|\\1 \"${REPO_ID}\"|" "$TFVARS"
+  rm -f "${TFVARS}.bak"
+  echo "Set immutable-OIDC IDs in tfvars: owner=${OWNER_ID} repo=${REPO_ID}"
+else
+  echo "Warning: could not fetch GitHub numeric IDs for ${REPO}." >&2
+  echo "Set github_owner_id and github_repo_id in ${TFVARS} manually." >&2
 fi
 
 ECR_REPO="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/memos"
