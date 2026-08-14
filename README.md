@@ -152,7 +152,7 @@ gh auth login                              # install gh via your package manager
 ./setup.sh
 ```
 
-Enter your account ID, region, domain, and `owner/repo` when prompted. This rewrites those values across the repo and sets the required GitHub Actions variables (`AWS_ACCOUNT_ID`, `AWS_REGION`, `ECR_REPO`, `APP_DOMAIN`).
+Enter your account ID, region, domain, and `owner/repo` when prompted. This rewrites those values across the repo, fetches your GitHub owner/repo numeric IDs (for the immutable OIDC subject) into `terraform.tfvars`, and sets the required GitHub Actions variables (`AWS_ACCOUNT_ID`, `AWS_REGION`, `ECR_REPO`, `APP_DOMAIN`).
 
 **4. Bootstrap (local Terraform)**
 
@@ -356,7 +356,7 @@ A suggested checklist of evidence to capture — proving the build, the infrastr
 
 ## Security
 
-- **Keyless CI via OIDC** — GitHub Actions assumes `memos_github_role` through the GitHub OIDC provider; no static AWS keys are stored. The trust policy is scoped to `repo:<owner>/<repo>:ref:refs/heads/main` (only this repo's `main` branch can assume the role) with audience `sts.amazonaws.com`.
+- **Keyless CI via OIDC, with an immutable subject** — GitHub Actions assumes `memos_github_role` through the GitHub OIDC provider; no static AWS keys are stored. The trust policy pins GitHub's *immutable* subject claim — `repo:<owner>@<owner_id>/<repo>@<repo_id>:ref:refs/heads/main` — which encodes the numeric owner and repo IDs, so it stays bound to this exact repository across renames and can't be hijacked by namespace recycling. Audience is `sts.amazonaws.com`, and only the `main` branch can assume the role.
 - **Least-privilege IAM** — the CI role uses a tight, hand-written policy (`github-tight-policy.json.tftpl`), not `AdministratorAccess`.
 - **IRSA for in-cluster controllers** — cert-manager and ExternalDNS receive AWS permissions via IAM Roles for Service Accounts, each scoped to the specific Route 53 hosted zone. Pods, not nodes, hold narrowly-scoped credentials.
 - **Encrypted, locked remote state** — the S3 backend uses server-side encryption (AES256), bucket versioning, a full public-access block, and native S3 lockfile locking (`use_lockfile`).
