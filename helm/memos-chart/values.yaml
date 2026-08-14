@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: 310829530244.dkr.ecr.eu-west-2.amazonaws.com/memos
-  tag: f2826f910639c75f43c3dd887c127420d4d91dbd
+  tag: 955a352188d22fa7234e8d3fa49b806e6ce4a223
   pullPolicy: IfNotPresent
 
 service:
