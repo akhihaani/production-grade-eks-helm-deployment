@@ -175,15 +175,15 @@ The bootstrap output lists 4 Route 53 nameservers. Add them as NS records at you
 **6. Run the pipelines**
 Because this is a fork, enable workflows in your repo's **Actions** tab. Then run them in order:
 
-- **`security-build.yaml`** — builds the image, scans it (Checkov + Trivy), pushes it to ECR, and bumps the image tag in git. Run this first so an image exists.
-- **`cluster.yaml`** — provisions the VPC + EKS cluster (Terragrunt) and installs NGINX ingress, cert-manager issuers, the ArgoCD Application, and the Grafana dashboards.
+1. **`cluster.yaml`** — provisions the VPC + EKS cluster (Terragrunt) and installs NGINX ingress, cert-manager issuers, the ArgoCD Application, and the Grafana dashboards.
+2. **`security-build.yaml`** — builds your image, scans it (Checkov + Trivy), pushes it to ECR, and bumps the image tag in git; ArgoCD then rolls that image out.
 
 From the terminal:
 
 ```bash
 gh repo set-default <your-fork>
-gh workflow run security-build.yaml
 gh workflow run cluster.yaml
+gh workflow run security-build.yaml
 ```
 
 Monitor with:
@@ -194,7 +194,7 @@ gh run watch         # live-follow the latest run until it finishes
 gh run view --log    # full logs of a run
 ```
 
-> `cluster.yaml` should only be run after `security-build.yaml` completes. cert-manager certificate validation can take several minutes.
+> Until `security-build.yaml` has pushed your fork's image and bumped the tag, the app pods sit in `ImagePullBackOff` — the committed tag points at an image that isn't in your ECR yet. ArgoCD rolls them out once it completes. cert-manager certificate validation can take several minutes.
 
 **7. Verify**
 
