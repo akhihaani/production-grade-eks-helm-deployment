@@ -5,7 +5,7 @@ metadata:
   labels:
     app: memos
   annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-staging
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.clusterIssuer }}
 spec:
   ingressClassName: nginx
   tls:

@@ -173,8 +173,7 @@ cd ../..
 The bootstrap output lists 4 Route 53 nameservers. Add them as NS records at your domain registrar for the domain (or subdomain) you own — this hands DNS authority to Route 53. TLS certificate issuance will not succeed until this is done.
 
 **6. Run the pipelines**
-
-Because this is a fork, first enable workflows in your repo's **Actions** tab. Then run them in order:
+Because this is a fork, enable workflows in your repo's **Actions** tab. Then run them in order:
 
 - **`security-build.yaml`** — builds the image, scans it (Checkov + Trivy), pushes it to ECR, and bumps the image tag in git. Run this first so an image exists.
 - **`cluster.yaml`** — provisions the VPC + EKS cluster (Terragrunt) and installs NGINX ingress, cert-manager issuers, the ArgoCD Application, and the Grafana dashboards.
@@ -201,6 +200,8 @@ gh run view --log    # full logs of a run
 
 - App: `https://<your-domain>` (health check at `https://<your-domain>/healthz`)
 - Grafana: `https://grafana.<your-domain>`
+
+The certificate is trusted by default (production issuer). If you switched to `letsencrypt-staging` to iterate, the browser will warn it's untrusted — switch back to `letsencrypt-dns01`, push, then `kubectl delete secret memos-tls -n memos` to force re-issuance.
 
 **8. Destroy**
 
@@ -286,7 +287,8 @@ helm upgrade --install nginx-ingress-controller nginx-stable/nginx-ingress \
 
 ```bash
 helm install memos ./helm/memos-chart \
-  --set image.repository=memos --set image.tag=local
+  --set image.repository=memos --set image.tag=local \
+  --set ingress.clusterIssuer=letsencrypt-staging
 
 kubectl apply -f manifests/nginx-servicemonitor.yaml
 kubectl create configmap nginx-ingress-dashboard \

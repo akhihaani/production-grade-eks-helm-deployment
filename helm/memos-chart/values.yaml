@@ -10,3 +10,10 @@ service:
   port: 80
 
 containerPort: 8081
+
+ingress:
+  # Let's Encrypt issuer for the TLS cert. Defaults to `letsencrypt-dns01` (the
+  # production ACME issuer) so a fresh deploy gets a real, browser-trusted cert with
+  # no changes. Switch to `letsencrypt-staging` (untrusted, high rate limits) only if
+  # you need to iterate without burning production rate limits.
+  clusterIssuer: letsencrypt-dns01
