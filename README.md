@@ -203,7 +203,30 @@ gh run view --log    # full logs of a run
 
 The certificate is trusted by default (production issuer). If you switched to `letsencrypt-staging` to iterate, the browser will warn it's untrusted — switch back to `letsencrypt-dns01`, push, then `kubectl delete secret memos-tls -n memos` to force re-issuance.
 
-**8. Destroy**
+**8. Access the cluster (optional — inspect the runtime)**
+
+The site works without this, but connecting with `kubectl` lets you inspect the running cluster (pods, the ArgoCD Application, cert-manager `Certificate`s, Grafana)
+The cluster uses API-only authentication and was created by the **CI role**, so your local IAM identity starts with **no access**.
+Grant it an access entry, then connect:
+
+```bash
+CLUSTER=memos-eks-cluster
+REGION=eu-west-2
+MY_ARN=$(aws sts get-caller-identity --query Arn --output text)
+
+aws eks create-access-entry --cluster-name "$CLUSTER" --region "$REGION" --principal-arn "$MY_ARN"
+aws eks associate-access-policy --cluster-name "$CLUSTER" --region "$REGION" \
+  --principal-arn "$MY_ARN" \
+  --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy \
+  --access-scope type=cluster
+
+aws eks update-kubeconfig --name "$CLUSTER" --region "$REGION"
+kubectl get pods -A
+```
+
+(Declarative alternative: add an `aws_eks_access_entry` + `aws_eks_access_policy_association` for your ARN in `Terraform/infra/modules/eks/eks.tf`, mirroring the `github_role` block, then re-run `cluster.yaml`.)
+
+**9. Destroy**
 
 Take the app and cluster offline:
 
@@ -320,41 +343,100 @@ then <http://localhost:3000> (default login `admin` / `prom-operator`).
 
 ## Screenshots
 
-A suggested checklist of evidence to capture — proving the build, the infrastructure, the runtime, and the security posture.
+Evidence from a live end-to-end deployment — the CI/CD pipelines, the AWS infrastructure, the in-cluster runtime, and the running app. Expand each section.
 
-**CI/CD pipelines (GitHub Actions):**
+<details>
+<summary><b>CI/CD pipelines (GitHub Actions)</b></summary>
 
-- [ ] `security-build.yaml` run succeeded (build + Checkov + Trivy + push)
-- [ ] `cluster.yaml` run succeeded (provision + install add-ons)
-- [ ] `destroy.yaml` run succeeded
-- [ ] Trivy + ECR scan output in the run summary (security-scan proof)
+**`security-build.yaml` — build, scan (Checkov + Trivy), push to ECR**
 
-**AWS console (infrastructure):**
+![security-build pipeline success](Documents/security-build.yaml-success.png)
 
-- [ ] EKS cluster (Active)
-- [ ] ECR repository showing the pushed image + on-push scan findings
-- [ ] Route 53 hosted zone with its records
-- [ ] VPC — public + private subnets across AZs, NAT + IGW
-- [ ] The Load Balancer created by the ingress Service, with healthy targets
-- [ ] (Optional) CloudWatch control-plane log group, if cluster logging is enabled
+**`cluster.yaml` — provision (Terragrunt) + install add-ons**
 
-**Kubernetes runtime:**
+![cluster pipeline success](Documents/cluster.yaml-success.png)
 
-- [ ] `kubectl get pods -A` with the memos pods Running
-- [ ] ArgoCD UI — the `memos` Application Synced + Healthy
-- [ ] cert-manager `Certificate` Ready (proof of issuance)
-- [ ] Grafana dashboard rendering the NGINX ingress metrics
+**`destroy.yaml` — teardown**
 
-**Security:**
+![destroy pipeline success](Documents/destroy.yaml-success.png)
 
-- [ ] Browser padlock / certificate details for `https://<domain>` (valid TLS cert)
-- [ ] GitHub Actions variables page — only `vars`, no static AWS keys (OIDC proof)
+</details>
 
-**Application:**
+<details>
+<summary><b>AWS infrastructure (console)</b></summary>
 
-- [ ] Live site at `https://<domain>`
-- [ ] Local kind run: the site in a browser
-- [ ] Local `docker build` + `curl .../healthz` returning healthy
+**VPC**
+
+![VPC](Documents/VPC.png)
+
+**Subnets (public + private across AZs)**
+
+![Subnets](Documents/Subnets.png)
+
+**Internet Gateway**
+
+![Internet Gateway](Documents/IGW.png)
+
+**NAT Gateway**
+
+![NAT Gateway](Documents/NAT%20GW.png)
+
+**Ingress load balancer**
+
+![Load Balancer](Documents/Load%20Balancer.png)
+
+**EKS cluster**
+
+![EKS cluster](Documents/EKS%20Cluster.png)
+
+**ECR repository**
+
+![ECR repository](Documents/ECR%20Repository.png)
+
+**Route 53 hosted zone + records**
+
+![Hosted zone with records](Documents/hosted%20zone%20with%20records.png)
+
+</details>
+
+<details>
+<summary><b>Kubernetes runtime</b></summary>
+
+**Running pods (`kubectl get pods -A`)**
+
+![kubectl get pods -A](Documents/kubectl%20get%20pods%20-A.png)
+
+**ArgoCD — `memos` Application Synced &amp; Healthy**
+
+![ArgoCD](Documents/ArgoCD.png)
+
+**Grafana — NGINX ingress dashboard**
+
+![Grafana dashboard](Documents/Grafana%20Website.png)
+
+</details>
+
+<details>
+<summary><b>Security &amp; access</b></summary>
+
+**Valid TLS certificate (browser)**
+
+![Browser certificate](Documents/browser%20certificate.png)
+
+**GitHub Actions variables — no static AWS keys (OIDC)**
+
+![GitHub Actions variables](Documents/GitHub%20Actions%20Variables.png)
+
+</details>
+
+<details>
+<summary><b>Application</b></summary>
+
+**Live memos app at the domain**
+
+![Live site](Documents/live%20site%20at%20domain.png)
+
+</details>
 
 ## Security
 
