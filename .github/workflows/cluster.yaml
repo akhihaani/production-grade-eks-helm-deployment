@@ -72,6 +72,7 @@ jobs:
             --namespace nginx-ingress --create-namespace \
             --set prometheus.create=true \
             --set prometheus.service.create=true \
+            --set-string controller.service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-type"=nlb \
             --skip-schema-validation
 
       - name: Apply nginx ServiceMonitor
