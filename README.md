@@ -193,14 +193,14 @@ cd ../..
 
 **5. Delegate DNS (manual)**
 
-The bootstrap output lists 4 Route 53 nameservers. Add them as NS records at your domain registrar for the domain (or subdomain) you own — this hands DNS authority to Route 53. TLS certificate issuance will not succeed until this is done.
+The bootstrap output lists 4 Route 53 nameservers. Add them as NS records at your domain registrar for the domain (or subdomain) you own. This hands DNS authority to Route 53. TLS certificate issuance will not succeed until this is done.
 
 **6. Run the pipelines**
 
 Because this is a fork, enable workflows in your repo's **Actions** tab. Then run them in order:
 
-1. **`cluster.yaml`** — provisions the VPC + EKS cluster (Terragrunt) and installs NGINX ingress, cert-manager issuers, the ArgoCD Application, and the Grafana dashboards.
-2. **`security-build.yaml`** — builds your image, scans it (Checkov + Trivy), pushes it to ECR, and bumps the image tag in git; ArgoCD then rolls that image out.
+1. **`cluster.yaml`**: provisions the VPC + EKS cluster (Terragrunt) and installs NGINX ingress, cert-manager issuers, the ArgoCD Application, and the Grafana dashboards.
+2. **`security-build.yaml`**: builds your image, scans it (Checkov + Trivy), pushes it to ECR, and bumps the image tag in git; ArgoCD then rolls that image out.
 
 From the terminal:
 
@@ -218,18 +218,18 @@ gh run watch         # live-follow the latest run until it finishes
 gh run view --log    # full logs of a run
 ```
 
-> Until `security-build.yaml` has pushed your fork's image and bumped the tag, the app pods sit in `ImagePullBackOff` — the committed tag points at an image that isn't in your ECR yet. ArgoCD rolls them out once it completes. cert-manager certificate validation can take several minutes.
+> Until `security-build.yaml` has pushed your fork's image and bumped the tag, the app pods sit in `ImagePullBackOff`: the committed tag points at an image that isn't in your ECR yet. ArgoCD rolls them out once it completes. cert-manager certificate validation can take several minutes.
 
 **7. Verify**
 
 - App: `https://<your-domain>` (health check at `https://<your-domain>/healthz`)
 - Grafana: `https://grafana.<your-domain>`
 
-The certificate is trusted by default (production issuer). If you switched to `letsencrypt-staging` to iterate, the browser will warn it's untrusted — switch back to `letsencrypt-dns01`, push, then `kubectl delete secret memos-tls -n memos` to force re-issuance.
+The certificate is trusted by default (production issuer). If you switched to `letsencrypt-staging` to iterate, the browser will warn it's untrusted. Switch back to `letsencrypt-dns01`, push, then `kubectl delete secret memos-tls -n memos` to force re-issuance.
 
-**8. Access the cluster (optional — inspect the runtime)**
+**8. Access the cluster (optional, to inspect the runtime)**
 
-The site works without this, but connecting with `kubectl` lets you inspect the running cluster (pods, the ArgoCD Application, cert-manager `Certificate`s, Grafana). The cluster uses API-only authentication and was created by the **CI role**, so your local IAM identity starts with **no access** — grant it an access entry, then connect:
+The site works without this, but connecting with `kubectl` lets you inspect the running cluster (pods, the ArgoCD Application, cert-manager `Certificate`s, Grafana). The cluster uses API-only authentication and was created by the **CI role**, so your local IAM identity starts with **no access**, so grant it an access entry, then connect:
 
 ```bash
 CLUSTER=memos-eks-cluster
@@ -257,7 +257,7 @@ gh workflow run destroy.yaml
 gh run watch
 ```
 
-To also remove the foundation (state bucket, zone, ECR, IAM), tear down bootstrap locally — migrate its state back off S3 first, since the bucket itself is about to be deleted:
+To also remove the foundation (state bucket, zone, ECR, IAM), tear down bootstrap locally, migrating its state back off S3 first, since the bucket itself is about to be deleted:
 
 ```bash
 cd Terraform/bootstrap
@@ -271,10 +271,10 @@ Finally, remove the 4 NS records from your domain registrar.
 
 ### Local Set-Up
 
-Runs the full stack on a local [kind](https://kind.sigs.k8s.io/) cluster — the same in-cluster components as the cloud path, minus the three pieces that require real AWS/DNS:
+Runs the full stack on a local [kind](https://kind.sigs.k8s.io/) cluster, running the same in-cluster components as the cloud path, minus the three pieces that require real AWS/DNS:
 
 - **ExternalDNS → `/etc/hosts`** (no Route 53 locally).
-- **Let's Encrypt → a self-signed cert-manager issuer** (no public domain locally). The issuer reuses the name `letsencrypt-staging` so the chart's hardcoded Ingress annotation resolves unchanged — no chart edit needed.
+- **Let's Encrypt → a self-signed cert-manager issuer** (no public domain locally). The issuer reuses the name `letsencrypt-staging` so the chart's hardcoded Ingress annotation resolves unchanged, so no chart edit is needed.
 - **ArgoCD → a direct `helm install`** (no GitOps sync from a remote repo).
 
 **Prerequisites:** the Docker daemon running, plus `kind`, `helm`, and `kubectl` installed.
@@ -355,7 +355,7 @@ kubectl port-forward -n nginx-ingress \
   svc/nginx-ingress-controller-nginx-ingress 8443:443
 ```
 
-Then visit <https://memos.abuniyyah.uk:8443> — accept the self-signed cert (health check at `/healthz`). For Grafana:
+Then visit <https://memos.abuniyyah.uk:8443>, and accept the self-signed cert (health check at `/healthz`). For Grafana:
 
 ```bash
 kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80
@@ -365,20 +365,20 @@ then <http://localhost:3000> (default login `admin` / `prom-operator`).
 
 ## Screenshots
 
-Evidence from a live end-to-end deployment — the CI/CD pipelines, the AWS infrastructure, the in-cluster runtime, and the running app. Expand each section.
+Evidence from a live end-to-end deployment: the CI/CD pipelines, the AWS infrastructure, the in-cluster runtime, and the running app. Expand each section.
 
 <details>
 <summary><b>CI/CD pipelines (GitHub Actions)</b></summary>
 
-**`security-build.yaml` — build, scan (Checkov + Trivy), push to ECR**
+**`security-build.yaml`: build, scan (Checkov + Trivy), push to ECR**
 
 ![security-build pipeline success](Documents/security-build.yaml-success.png)
 
-**`cluster.yaml` — provision (Terragrunt) + install add-ons**
+**`cluster.yaml`: provision (Terragrunt) + install add-ons**
 
 ![cluster pipeline success](Documents/cluster.yaml-success.png)
 
-**`destroy.yaml` — teardown**
+**`destroy.yaml`: teardown**
 
 ![destroy pipeline success](Documents/destroy.yaml-success.png)
 
@@ -428,11 +428,11 @@ Evidence from a live end-to-end deployment — the CI/CD pipelines, the AWS infr
 
 ![kubectl get pods -A](Documents/kubectl%20get%20pods%20-A.png)
 
-**ArgoCD — `memos` Application Synced &amp; Healthy**
+**ArgoCD: `memos` Application Synced &amp; Healthy**
 
 ![ArgoCD](Documents/ArgoCD.png)
 
-**Grafana — NGINX ingress dashboard**
+**Grafana: NGINX ingress dashboard**
 
 ![Grafana dashboard](Documents/Grafana%20Website.png)
 
@@ -445,7 +445,7 @@ Evidence from a live end-to-end deployment — the CI/CD pipelines, the AWS infr
 
 ![Browser certificate](Documents/browser%20certificate.png)
 
-**GitHub Actions variables — no static AWS keys (OIDC)**
+**GitHub Actions variables: no static AWS keys (OIDC)**
 
 ![GitHub Actions variables](Documents/GitHub%20Actions%20Variables.png)
 
@@ -462,22 +462,22 @@ Evidence from a live end-to-end deployment — the CI/CD pipelines, the AWS infr
 
 ## Security
 
-- **Keyless CI via OIDC, with an immutable subject** — GitHub Actions assumes `memos_github_role` through the GitHub OIDC provider; no static AWS keys are stored. The trust policy pins GitHub's *immutable* subject claim — `repo:<owner>@<owner_id>/<repo>@<repo_id>:ref:refs/heads/main` — which encodes the numeric owner and repo IDs, so it stays bound to this exact repository across renames and can't be hijacked by namespace recycling. Audience is `sts.amazonaws.com`, and only the `main` branch can assume the role.
-- **Least-privilege IAM** — the CI role uses a tight, hand-written policy (`github-tight-policy.json.tftpl`), not `AdministratorAccess`.
-- **IRSA for in-cluster controllers** — cert-manager and ExternalDNS receive AWS permissions via IAM Roles for Service Accounts, each scoped to the specific Route 53 hosted zone. Pods, not nodes, hold narrowly-scoped credentials.
-- **Encrypted, locked remote state** — the S3 backend uses server-side encryption (AES256), bucket versioning, a full public-access block, and native S3 lockfile locking (`use_lockfile`).
-- **Supply-chain-aware image scanning** — ECR basic scanning on push (`scan_on_push`) plus a Trivy scan that **gates** the build on CRITICAL/HIGH findings; the Trivy action is pinned to a commit SHA (not a moving tag) to reduce action-supply-chain risk.
-- **IaC scanning** — Checkov runs over the Terraform in CI, surfacing misconfigurations (soft-fail, so it reports without blocking).
-- **Hardened container image** — multi-stage build, base images pinned by digest, a static CGO-disabled binary with debug symbols stripped, run as a non-root user with the binary set to `550` (read + execute, no write).
-- **Network boundaries** — worker nodes sit in private subnets (egress via NAT only); cluster and load-balancer security groups are auto-scoped, and the EKS control-plane ENIs live inside the VPC.
-- **TLS on all public endpoints** — HTTPS via cert-manager + Let's Encrypt (DNS-01 through Route 53), terminated at the NGINX ingress, which redirects HTTP → HTTPS by default when a TLS host is configured.
+- **Keyless CI via OIDC, with an immutable subject**: GitHub Actions assumes `memos_github_role` through the GitHub OIDC provider; no static AWS keys are stored. The trust policy pins GitHub's *immutable* subject claim, `repo:<owner>@<owner_id>/<repo>@<repo_id>:ref:refs/heads/main`, which encodes the numeric owner and repo IDs, so it stays bound to this exact repository across renames and can't be hijacked by namespace recycling. Audience is `sts.amazonaws.com`, and only the `main` branch can assume the role.
+- **Least-privilege IAM**: the CI role uses a tight, hand-written policy (`github-tight-policy.json.tftpl`), not `AdministratorAccess`.
+- **IRSA for in-cluster controllers**: cert-manager and ExternalDNS receive AWS permissions via IAM Roles for Service Accounts, each scoped to the specific Route 53 hosted zone. Pods, not nodes, hold narrowly-scoped credentials.
+- **Encrypted, locked remote state**: the S3 backend uses server-side encryption (AES256), bucket versioning, a full public-access block, and native S3 lockfile locking (`use_lockfile`).
+- **Supply-chain-aware image scanning**: ECR basic scanning on push (`scan_on_push`) plus a Trivy scan that **gates** the build on CRITICAL/HIGH findings; the Trivy action is pinned to a commit SHA (not a moving tag) to reduce action-supply-chain risk.
+- **IaC scanning**: Checkov runs over the Terraform in CI, surfacing misconfigurations (soft-fail, so it reports without blocking).
+- **Hardened container image**: multi-stage build, base images pinned by digest, a static CGO-disabled binary with debug symbols stripped, run as a non-root user with the binary set to `550` (read + execute, no write).
+- **Network boundaries**: worker nodes sit in private subnets (egress via NAT only); cluster and load-balancer security groups are auto-scoped, and the EKS control-plane ENIs live inside the VPC.
+- **TLS on all public endpoints**: HTTPS via cert-manager + Let's Encrypt (DNS-01 through Route 53), terminated at the NGINX ingress, which redirects HTTP → HTTPS by default when a TLS host is configured.
 
 ## Challenges
 
-- **Orphaned load balancer blocking teardown** — The NGINX ingress is installed via the Helm CLI in `cluster.yaml`, so the AWS load balancer it creates is not tracked in Terraform state. On destroy the cluster was torn down first, leaving the ELB and its ENIs still holding the subnets — so VPC/subnet deletion failed with repeated subnet `AuthFailure` errors. Fixed by adding an explicit "remove the ingress" step *before* `terragrunt destroy`, and making that step concrete rather than "skip if no cluster is found" (which could silently skip while the cluster existed but was merely unreachable). Manual cleanup also had to be **region-scoped** — earlier `aws elb` deletes weren't scoped to `eu-west-2`, so the load balancers quietly survived.
-- **Stale DNS record at the zone apex** — After several rebuilds, `memos.abuniyyah.uk` returned NXDOMAIN while `grafana` resolved. Its Route 53 A record was an ALIAS (health-evaluated) to an ELB from a prior cluster that no longer existed, so Route 53 returned no address. Root cause: the app is served at the **hosted-zone apex** (`memos.abuniyyah.uk` *is* the zone), and ExternalDNS's ownership-tracking TXT for an apex record (`a-memos.abuniyyah.uk`) falls *outside* the zone it manages — so ExternalDNS can never own the apex record and won't repair it when the ELB changes. Deleting the stale A/AAAA let ExternalDNS recreate them against the live ELB (immediate fix); the durable fix keeps the apex but makes it ownable — `txtPrefix: "%{record_type}-."` (note the trailing period) puts the owner TXT *in-zone* as `a-.memos.abuniyyah.uk`, plus `policy: sync` to prune owned orphans.
-- **AWS API throttling during provisioning** — Parallel Terragrunt applies fired too many AWS API calls at once, surfacing as intermittent `AuthFailure` / subnet-creation errors that looked like a credentials problem. Resolved by pinning `-parallelism=1` on the `terragrunt run --all apply` / `destroy` steps.
-- **Terragrunt cross-unit dependency vs. mock outputs** — `eks-addons` depended on another unit's outputs, but `apply` wasn't an allowed command for mock outputs, so the unit kept consuming mock values and failing. Removed the dependency (it was outside the infra unit's scope) and instead resolved the Route 53 zone with a `data` source keyed off the `domain` variable.
-- **IRSA / OIDC issuer condition key** — The IAM trust condition for IRSA uses the issuer *host* (`oidc.eks.eu-west-2.amazonaws.com/id/…`), not the full URL. The `replace(issuer, "https://", "")` is easy to forget, and without it the role silently never matches — the pod's credentials just don't work, with no obvious error.
-- **Migrating state locking to S3-native** — Swapped the DynamoDB lock table for S3-native locking (`use_lockfile = true`), which required bumping the AWS provider (1.1.9 → 1.11+), then deleting the DynamoDB table and dropping its IAM permissions from the CI policy.
-- **A diagram cell id that broke the editor** — A drawio cell with `id="push"` made the VS Code Draw.io extension throw `d.setId is not a function` on load. `push` collides with `Array.prototype.push`, so the decoder's id-lookup returned the native function instead of a cell. Found by bisecting the file down to the single offending cell, then fixed by renaming the id.
+- **Orphaned load balancer blocking teardown**: The NGINX ingress is installed via the Helm CLI in `cluster.yaml`, so the AWS load balancer it creates is not tracked in Terraform state. On destroy the cluster was torn down first, leaving the ELB and its ENIs still holding the subnets, so VPC/subnet deletion failed with repeated subnet `AuthFailure` errors. Fixed by adding an explicit "remove the ingress" step *before* `terragrunt destroy`, and making that step concrete rather than "skip if no cluster is found" (which could silently skip while the cluster existed but was merely unreachable). Manual cleanup also had to be **region-scoped**: earlier `aws elb` deletes weren't scoped to `eu-west-2`, so the load balancers quietly survived.
+- **Stale DNS record at the zone apex**: After several rebuilds, `memos.abuniyyah.uk` returned NXDOMAIN while `grafana` resolved. Its Route 53 A record was an ALIAS (health-evaluated) to an ELB from a prior cluster that no longer existed, so Route 53 returned no address. Root cause: the app is served at the **hosted-zone apex** (`memos.abuniyyah.uk` *is* the zone), and ExternalDNS's ownership-tracking TXT for an apex record (`a-memos.abuniyyah.uk`) falls *outside* the zone it manages, so ExternalDNS can never own the apex record and won't repair it when the ELB changes. Deleting the stale A/AAAA let ExternalDNS recreate them against the live ELB (immediate fix); the durable fix keeps the apex but makes it ownable, using `txtPrefix: "%{record_type}-."` (note the trailing period) puts the owner TXT *in-zone* as `a-.memos.abuniyyah.uk`, plus `policy: sync` to prune owned orphans.
+- **AWS API throttling during provisioning**: Parallel Terragrunt applies fired too many AWS API calls at once, surfacing as intermittent `AuthFailure` / subnet-creation errors that looked like a credentials problem. Resolved by pinning `-parallelism=1` on the `terragrunt run --all apply` / `destroy` steps.
+- **Terragrunt cross-unit dependency vs. mock outputs**: `eks-addons` depended on another unit's outputs, but `apply` wasn't an allowed command for mock outputs, so the unit kept consuming mock values and failing. Removed the dependency (it was outside the infra unit's scope) and instead resolved the Route 53 zone with a `data` source keyed off the `domain` variable.
+- **IRSA / OIDC issuer condition key**: The IAM trust condition for IRSA uses the issuer *host* (`oidc.eks.eu-west-2.amazonaws.com/id/…`), not the full URL. The `replace(issuer, "https://", "")` is easy to forget, and without it the role silently never matches, and the pod's credentials just don't work, with no obvious error.
+- **Migrating state locking to S3-native**: Swapped the DynamoDB lock table for S3-native locking (`use_lockfile = true`), which required bumping the AWS provider (1.1.9 → 1.11+), then deleting the DynamoDB table and dropping its IAM permissions from the CI policy.
+- **A diagram cell id that broke the editor**: A drawio cell with `id="push"` made the VS Code Draw.io extension throw `d.setId is not a function` on load. `push` collides with `Array.prototype.push`, so the decoder's id-lookup returned the native function instead of a cell. Found by bisecting the file down to the single offending cell, then fixed by renaming the id.
