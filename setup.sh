@@ -34,9 +34,9 @@ FILES=(
   Terraform/infra/modules/eks-addons/eks-addons.tf
   Terraform/infra/modules/eks-addons/helm-values/cert-manager.yaml
   Terraform/infra/modules/eks-addons/helm-values/external-dns.yaml
-  helm/memos-chart/templates/Ingress.yaml
+  helm/memos-chart/templates/ingress.yaml
   helm/memos-chart/values.yaml
-  manifests/Application.yaml
+  manifests/application.yaml
   manifests/clusterIssuer-prod.yaml
   manifests/clusterIssuer-staging.yaml
   Dockerfile

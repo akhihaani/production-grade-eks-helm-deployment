@@ -58,7 +58,7 @@ jobs:
       - name: Apply Application
         run: |
           aws eks update-kubeconfig --name memos-eks-cluster --region ${{ vars.AWS_REGION }}
-          kubectl apply -f manifests/Application.yaml
+          kubectl apply -f manifests/application.yaml
 
       - name: Install Helm
         uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4  # v4.3.1
