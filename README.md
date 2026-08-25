@@ -22,17 +22,33 @@ CI/CD pipelines have been implemented using GitHub Actions to automate the deplo
 
 ### Tech Stack
 
-- Terraform & Terragrunt: Provisions all AWS infrastructure as reusable, DRY modules with S3-managed remote state
-- GitHub Actions: Runs the CI/CD pipelines — security scans, image build & push, and cluster provisioning
-- Kubernetes (Amazon EKS): Orchestrates our containerised workloads for scalability and reliability
-- Docker: Containerises the Memos app to ensure a consistent runtime environment
-- Helm: Packages the application and platform add-ons as versioned, configurable releases
-- ArgoCD: Implementing GitOps for automated and declarative continuous delivery
-- NGINX Ingress Controller: Routes external HTTPS traffic to the correct in-cluster services
-- cert-manager: Automates TLS certificate issuance and renewal via Let's Encrypt
-- ExternalDNS: Keeps Route 53 DNS records in sync with cluster ingresses automatically
-- Prometheus: Collects and queries app and infrastructure metrics for monitoring
-- Grafana: Visualises metrics and provides actionable insights through customised dashboards
+![Terraform](https://img.shields.io/badge/Terraform-844FBA?style=for-the-badge&logo=terraform&logoColor=white)
+![Terragrunt](https://img.shields.io/badge/Terragrunt-2E8B57?style=for-the-badge&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)
+![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white)
+![Amazon EKS](https://img.shields.io/badge/Amazon_EKS-FF9900?style=for-the-badge&logo=amazoneks&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Helm](https://img.shields.io/badge/Helm-0F1689?style=for-the-badge&logo=helm&logoColor=white)
+![Argo CD](https://img.shields.io/badge/Argo_CD-EF7B4D?style=for-the-badge&logo=argo&logoColor=white)
+![NGINX](https://img.shields.io/badge/NGINX-009639?style=for-the-badge&logo=nginx&logoColor=white)
+![cert-manager](https://img.shields.io/badge/cert--manager-326CE5?style=for-the-badge&logoColor=white)
+![ExternalDNS](https://img.shields.io/badge/ExternalDNS-326CE5?style=for-the-badge&logoColor=white)
+![Prometheus](https://img.shields.io/badge/Prometheus-E6522C?style=for-the-badge&logo=prometheus&logoColor=white)
+![Grafana](https://img.shields.io/badge/Grafana-F46800?style=for-the-badge&logo=grafana&logoColor=white)
+
+| Category | Technology | Role |
+|---|---|---|
+| Infrastructure as Code | Terraform + Terragrunt | Provisions all AWS infrastructure as DRY, reusable modules with S3 remote state |
+| CI/CD | GitHub Actions | Runs the pipelines: security scans, image build and push, and cluster provisioning |
+| Orchestration | Kubernetes (Amazon EKS) | Runs and schedules the containerised workloads |
+| Containerisation | Docker | Packages the memos app into a consistent runtime image |
+| Packaging | Helm | Ships the app and platform add-ons as versioned, configurable releases |
+| GitOps | ArgoCD | Declaratively syncs the cluster to git and self-heals drift |
+| Ingress | NGINX Ingress Controller | Routes external HTTPS traffic to the right in-cluster services |
+| TLS | cert-manager | Issues and renews Let's Encrypt certificates automatically |
+| DNS | ExternalDNS | Keeps Route 53 records in sync with cluster ingresses |
+| Metrics | Prometheus | Collects and queries app and infrastructure metrics |
+| Dashboards | Grafana | Visualises those metrics through custom dashboards |
 
 ## Repository Structure
 ```
