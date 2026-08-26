@@ -32,19 +32,19 @@ jobs:
       - name: Terragrunt Init
         working-directory: Terraform/infra
         run: terragrunt run --all init
-        
+
       - name: Terraform Format
         working-directory: Terraform/infra
         run: terraform fmt -check -recursive
-        
+
       - name: Terragrunt Validate
         working-directory: Terraform/infra
         run: terragrunt run --all validate
-        
+
       - name: Terraform Lint
         working-directory: Terraform/infra
         run: tflint --recursive
-        
+
       - name: Terragrunt Run
         working-directory: Terraform/infra
         run: terragrunt run --all apply --non-interactive -- -parallelism=1
