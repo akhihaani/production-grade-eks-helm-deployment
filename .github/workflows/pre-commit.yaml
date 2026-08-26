@@ -1,0 +1,24 @@
+name: pre-commit
+
+# Runs the same hooks from .pre-commit-config.yaml on GitHub, so the checks are
+# enforced for every change (not only on machines where the local hook is installed).
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    env:
+      # terraform_fmt needs the terraform binary, which isn't on the runner by
+      # default. It runs locally via the hook, and cluster.yaml already fmt-checks
+      # the Terraform, so it's skipped here to keep this job lean.
+      SKIP: terraform_fmt
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1      # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: '3.12'
+      - run: pip install pre-commit
+      - run: pre-commit run --all-files --show-diff-on-failure
