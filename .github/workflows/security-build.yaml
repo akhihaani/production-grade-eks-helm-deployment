@@ -37,6 +37,11 @@ jobs:
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Keep web/ in the build context
+        run: sed -i '/^\/web\/$/d' app/memos/.dockerignore
+        # memos' own .dockerignore excludes /web/ (their build doesn't need the
+        # frontend source); our Dockerfile builds the frontend, so re-include it.
+
       - name: Build and Tag Docker image
         run: docker build -t ${{ vars.ECR_REPO }}:${{ github.sha }} -f Dockerfile ./app/memos
 
