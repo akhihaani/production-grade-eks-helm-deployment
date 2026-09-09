@@ -17,3 +17,14 @@ ingress:
   # no changes. Switch to `letsencrypt-staging` (untrusted, high rate limits) only if
   # you need to iterate without burning production rate limits.
   clusterIssuer: letsencrypt-dns01
+
+# Database (RDS Postgres, delivered via External Secrets Operator).
+# Set enabled: false for a local/dev deploy that falls back to the app's default SQLite.
+database:
+  enabled: true
+  host: "memos-postgres.cvweyaykcznv.eu-west-2.rds.amazonaws.com"        # RDS endpoint, from the rds unit output `db_address`
+  port: 5432
+  name: memos     # from the rds output `db_name`
+  region: eu-west-2
+  # The AWS Secrets Manager secret RDS manages (name or ARN), from `master_user_secret_arn`.
+  awsSecretName: "arn:aws:secretsmanager:eu-west-2:310829530244:secret:rds!db-83966dd9-493e-4d1c-9fac-680f6bc8bf91-1llQS0"

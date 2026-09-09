@@ -37,3 +37,13 @@ spec:
             periodSeconds: 20
             timeoutSeconds: 3
             failureThreshold: 3
+          {{- if .Values.database.enabled }}
+          env:
+            - name: MEMOS_DRIVER
+              value: postgres
+            - name: MEMOS_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: memos-db
+                  key: MEMOS_DSN
+          {{- end }}
