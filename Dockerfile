@@ -67,6 +67,11 @@ LABEL org.opencontainers.image.title="memos" \
 # Metadata which gives extra information for those looking at the container
 # Standard is to place label after FROM but there is no technical benefit to that
 
+# Patch OS packages baked into the pinned base (e.g. openssl) to the latest in
+# the Alpine 3.23 repo. The base stays digest-pinned for a reproducible starting
+# point; this pulls security fixes published since that base image was built.
+RUN apk --no-cache upgrade
+
 RUN addgroup -S memos && adduser -S memos -G memos
 # Add system group 'memos' and system user 'memos' who is attached to group 'memos'
 
