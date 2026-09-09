@@ -1,9 +1,9 @@
 ## STAGE 1: BUILD
 
-FROM golang@sha256:47ce5636e9936b2c5cbf708925578ef386b4f8872aec74a67bd13a627d242b19 AS builder
+FROM golang@sha256:512690a5660563b57d37ecc31129e7f136e831db2aed24a1dbeb8ad7380dc0fa AS builder
 # Base image is Go because that is the language
-# Sha hash for 1.26-bookworm
-# 1.26 since that is the Go version specified in 'go.mod'
+# Sha hash for 1.27-bookworm
+# 1.27 since that is the Go version specified in 'go.mod'
 # '-bookworm' is a go image tag for a specific Debian release (the OS Go is built on), it's the most stable current release
 # 'AS builder' means we named this stage 'builder'
 
