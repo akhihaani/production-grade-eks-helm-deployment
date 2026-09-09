@@ -19,6 +19,16 @@ dependency "eks" {
     mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "apply", "destroy"]
 }
 
+dependency "rds" {
+    config_path = "../rds"
+
+    mock_outputs = {
+      master_user_secret_arn = "arn:aws:secretsmanager:eu-west-2:000000000000:secret:mock-000000"
+      kms_key_arn            = "arn:aws:kms:eu-west-2:000000000000:key/mock"
+    }
+    mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "apply", "destroy"]
+}
+
 inputs = {
   region = include.root.locals.region
   domain = include.root.locals.domain
@@ -26,4 +36,7 @@ inputs = {
   cluster_certificate_authority = dependency.eks.outputs.cluster_certificate_authority
   cluster_name = dependency.eks.outputs.cluster_name
   oidc_provider_arn = dependency.eks.outputs.oidc_provider_arn
+
+  db_master_secret_arn = dependency.rds.outputs.master_user_secret_arn
+  db_kms_key_arn       = dependency.rds.outputs.kms_key_arn
 }

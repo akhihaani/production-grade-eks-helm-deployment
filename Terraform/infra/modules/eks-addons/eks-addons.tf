@@ -129,3 +129,65 @@ resource "helm_release" "kube_prometheus_stack" {
     }
   })]
 }
+
+# External Secrets Operator
+# Syncs the RDS master credentials from AWS Secrets Manager into a Kubernetes
+# secret the memos app can consume. Installs the SecretStore/ExternalSecret CRDs.
+resource "helm_release" "external_secrets" {
+  name             = "external-secrets"
+  repository       = "https://charts.external-secrets.io"
+  chart            = "external-secrets"
+  version          = "2.10.0"
+  namespace        = "external-secrets"
+  create_namespace = true
+  # Pin a version for production: `helm search repo external-secrets/external-secrets`
+  depends_on = [module.external_secrets_irsa_role.iam_role_arn]
+
+  values = [file("${path.module}/helm-values/external-secrets.yaml")]
+}
+
+# IAM policy: read ONLY the RDS master secret, and decrypt it with the RDS KMS key.
+resource "aws_iam_policy" "external_secrets_read" {
+  name = "external_secrets_read"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "ReadRDSMasterSecret"
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret",
+        ]
+        Resource = var.db_master_secret_arn
+      },
+      {
+        Sid      = "DecryptWithRDSKey"
+        Effect   = "Allow"
+        Action   = ["kms:Decrypt"]
+        Resource = var.db_kms_key_arn
+      },
+    ]
+  })
+}
+
+# External Secrets IRSA: binds the read-only policy above to the ESO controller
+# service account (external-secrets/external-secrets).
+module "external_secrets_irsa_role" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  version = "5.2.0"
+
+  role_name = "external_secrets"
+
+  role_policy_arns = {
+    read_db_secret = aws_iam_policy.external_secrets_read.arn
+  }
+
+  oidc_providers = {
+    eks = {
+      provider_arn               = var.oidc_provider_arn
+      namespace_service_accounts = ["external-secrets:external-secrets"]
+    }
+  }
+}
