@@ -20,6 +20,73 @@ resource "helm_release" "argo_cd" {
   namespace        = "argocd"
 }
 
+data "aws_caller_identity" "current" {}
+
+# ArgoCD Image Updater
+# Watches ECR for new memos images and rolls them out by updating the memos
+# Application's Helm params directly (write-back: argocd). Replaces the pipeline's
+# git-push of the image tag, so nothing writes to the protected main branch.
+resource "helm_release" "argocd_image_updater" {
+  name             = "argocd-image-updater"
+  repository       = "https://argoproj.github.io/argo-helm"
+  chart            = "argocd-image-updater"
+  version          = "1.3.1"
+  namespace        = "argocd"
+  create_namespace = true
+  depends_on       = [module.argocd_image_updater_irsa_role.iam_role_arn]
+
+  values = [file("${path.module}/helm-values/argocd-image-updater.yaml")]
+}
+
+# IAM policy: read the memos ECR repository so Image Updater can detect new tags.
+resource "aws_iam_policy" "argocd_image_updater_ecr" {
+  name = "argocd_image_updater_ecr"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "EcrAuth"
+        Effect   = "Allow"
+        Action   = ["ecr:GetAuthorizationToken"]
+        Resource = "*"
+      },
+      {
+        Sid    = "EcrReadMemosRepo"
+        Effect = "Allow"
+        Action = [
+          "ecr:DescribeRepositories",
+          "ecr:DescribeImages",
+          "ecr:ListImages",
+          "ecr:BatchGetImage",
+          "ecr:GetDownloadUrlForLayer",
+        ]
+        Resource = "arn:aws:ecr:${var.region}:${data.aws_caller_identity.current.account_id}:repository/memos"
+      },
+    ]
+  })
+}
+
+# IRSA for Image Updater's service account (argocd/argocd-image-updater).
+module "argocd_image_updater_irsa_role" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  version = "5.2.0"
+
+  role_name = "argocd_image_updater"
+
+  role_policy_arns = {
+    ecr_read = aws_iam_policy.argocd_image_updater_ecr.arn
+  }
+
+  oidc_providers = {
+    eks = {
+      provider_arn               = var.oidc_provider_arn
+      namespace_service_accounts = ["argocd:argocd-image-updater"]
+    }
+  }
+}
+
+
 # Cert Manager
 resource "helm_release" "cert_manager" {
   name = "cert-manager"

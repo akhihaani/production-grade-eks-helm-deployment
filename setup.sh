@@ -36,7 +36,7 @@ FILES=(
   Terraform/infra/modules/eks-addons/helm-values/external-dns.yaml
   helm/memos-chart/templates/ingress.yaml
   helm/memos-chart/values.yaml
-  manifests/application.yaml
+  manifests/memos-application.yaml
   manifests/clusterIssuer-prod.yaml
   manifests/clusterIssuer-staging.yaml
   Dockerfile

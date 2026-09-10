@@ -95,7 +95,7 @@ CI/CD pipelines have been implemented using GitHub Actions to automate the deplo
 │     └─ templates/                    # Deployment, Service, Ingress
 │
 ├─ manifests/                          # cluster-applied YAML (kubectl apply steps in cluster.yaml)
-│  ├─ application.yaml                 # ArgoCD Application → reconciles helm/memos-chart from git
+│  ├─ memos-application.yaml                 # ArgoCD Application → reconciles helm/memos-chart from git
 │  ├─ clusterIssuer-staging.yaml       # cert-manager Let's Encrypt staging issuer (DNS-01 via Route53)
 │  ├─ clusterIssuer-prod.yaml          # cert-manager Let's Encrypt production issuer
 │  └─ nginx-servicemonitor.yaml        # ServiceMonitor scraping nginx :9113 metrics into Prometheus
