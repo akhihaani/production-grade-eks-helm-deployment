@@ -1,0 +1,27 @@
+# ArgoCD Image Updater runs in the argocd namespace. It needs:
+#  - IRSA, so it can read ECR and detect new memos images
+#  - the ECR registry configured with a credential helper (get-login-password)
+
+serviceAccount:
+  create: true
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::310829530244:role/argocd_image_updater"
+    # ARN of the argocd_image_updater IAM role created in eks-addons.tf
+
+config:
+  registries:
+    - name: ECR
+      prefix: 310829530244.dkr.ecr.eu-west-2.amazonaws.com
+      api_url: https://310829530244.dkr.ecr.eu-west-2.amazonaws.com
+      ping: yes
+      credentials: ext:/scripts/ecr-login.sh
+      credsexpire: 11h
+
+# Mounts the login script at /scripts. The argocd-image-updater image (v1.3.x, Alpine)
+# ships the aws CLI, so this runs as-is, no custom image or sidecar needed.
+authScripts:
+  enabled: true
+  scripts:
+    ecr-login.sh: |
+      #!/bin/sh
+      aws ecr --region eu-west-2 get-login-password

@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: memos
+  namespace: argocd
+  annotations:
+    # ArgoCD Image Updater watches ECR for new memos images and rolls them out by
+    # updating this Application's Helm params directly (write-back: argocd), so the
+    # deploy never commits to the protected main branch.
+    argocd-image-updater.argoproj.io/image-list: memos=310829530244.dkr.ecr.eu-west-2.amazonaws.com/memos
+    argocd-image-updater.argoproj.io/memos.helm.image-name: image.repository
+    argocd-image-updater.argoproj.io/memos.helm.image-tag: image.tag
+    argocd-image-updater.argoproj.io/memos.update-strategy: newest-build
+    argocd-image-updater.argoproj.io/write-back-method: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/akhihaani/production-grade-eks-helm-deployment.git
+    targetRevision: main
+    path: helm/memos-chart
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: memos
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
