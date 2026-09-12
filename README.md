@@ -35,6 +35,9 @@ CI/CD pipelines have been implemented using GitHub Actions to automate the deplo
 ![ExternalDNS](https://img.shields.io/badge/ExternalDNS-326CE5?style=for-the-badge&logoColor=white)
 ![Prometheus](https://img.shields.io/badge/Prometheus-E6522C?style=for-the-badge&logo=prometheus&logoColor=white)
 ![Grafana](https://img.shields.io/badge/Grafana-F46800?style=for-the-badge&logo=grafana&logoColor=white)
+![Amazon RDS](https://img.shields.io/badge/Amazon_RDS-527FFF?style=for-the-badge&logo=amazonrds&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+![External Secrets](https://img.shields.io/badge/External_Secrets-5B4FCF?style=for-the-badge&logoColor=white)
 
 | Category | Technology | Role |
 |---|---|---|
@@ -49,6 +52,9 @@ CI/CD pipelines have been implemented using GitHub Actions to automate the deplo
 | DNS | ExternalDNS | Keeps Route 53 records in sync with cluster ingresses |
 | Metrics | Prometheus | Collects and queries app and infrastructure metrics |
 | Dashboards | Grafana | Visualises those metrics through custom dashboards |
+| Database | Amazon RDS (PostgreSQL) | Durable, encrypted, private database for the app's notes |
+| Secrets | External Secrets Operator | Syncs DB credentials from AWS Secrets Manager into the cluster, nothing in git |
+| Continuous delivery | ArgoCD Image Updater | Detects new images in ECR and rolls them out with no git commit |
 
 ## Repository Structure
 ```
@@ -58,6 +64,7 @@ CI/CD pipelines have been implemented using GitHub Actions to automate the deplo
 ├─ .gitignore
 ├─ .gitmodules                         # pins the memos submodule
 ├─ .trivyignore                        # upstream CVEs waived in the Trivy image scan
+├─ .pre-commit-config.yaml             # local pre-commit hooks: gitleaks secret scan, terraform fmt, hygiene
 ├─ setup.sh                            # one-command port: rewrites the 4 values + sets GitHub Actions vars via gh
 ├─ README.md
 ├─ app/
@@ -81,18 +88,20 @@ CI/CD pipelines have been implemented using GitHub Actions to automate the deplo
 │     ├─ live/                         # Terragrunt units: thin wrappers wiring modules + dependencies
 │     │  ├─ vpc/terragrunt.hcl
 │     │  ├─ eks/terragrunt.hcl
+│     │  ├─ rds/terragrunt.hcl
 │     │  └─ eks-addons/terragrunt.hcl
 │     └─ modules/                      # reusable Terraform modules
 │        ├─ vpc/                       # VPC, public + private subnets, IGW, NAT gateway + EIP, route tables
 │        ├─ eks/                       # EKS cluster, managed node group, cluster/node IAM roles, IRSA OIDC provider, access entries
-│        └─ eks-addons/               # Helm releases: cert-manager, ExternalDNS, ArgoCD, kube-prometheus-stack (+ IRSA roles)
-│           └─ helm-values/           # values files for cert-manager / external-dns
+│        ├─ rds/                       # RDS PostgreSQL, customer-managed KMS key, DB subnet group + security group
+│        └─ eks-addons/               # Helm releases: cert-manager, ExternalDNS, ArgoCD (+ Image Updater), External Secrets Operator, kube-prometheus-stack (+ IRSA roles)
+│           └─ helm-values/           # values files: cert-manager, external-dns, external-secrets, argocd-image-updater
 │
 ├─ helm/
 │  └─ memos-chart/                     # the app's Helm chart (deployed by ArgoCD, not by CI)
 │     ├─ Chart.yaml
-│     ├─ values.yaml                   # image repo/tag (tag bumped by the build pipeline), ingress host
-│     └─ templates/                    # Deployment, Service, Ingress
+│     ├─ values.yaml                   # image repo/tag (updated in-cluster by ArgoCD Image Updater), ingress host, database (RDS) settings
+│     └─ templates/                    # Deployment, Service, Ingress, ExternalSecret (+ SecretStore)
 │
 ├─ manifests/                          # cluster-applied YAML (kubectl apply steps in cluster.yaml)
 │  ├─ memos-application.yaml                 # ArgoCD Application → reconciles helm/memos-chart from git
@@ -106,7 +115,8 @@ CI/CD pipelines have been implemented using GitHub Actions to automate the deplo
 │
 └─ .github/workflows/
    ├─ cluster.yaml                     # Pipeline 1: terragrunt provision → install nginx, issuers, ArgoCD app, dashboards
-   ├─ security-build.yaml              # Pipeline 2: Checkov → build/push image to ECR → Trivy → bump image tag in git
+   ├─ security-build.yaml              # Pipeline 2: Checkov → build/push image to ECR → Trivy (ArgoCD Image Updater deploys it)
+   ├─ pre-commit.yaml                  # runs the pre-commit hooks (gitleaks, fmt) on every PR
    └─ destroy.yaml                     # terragrunt destroy (dispatch)
 ```
 
@@ -121,19 +131,19 @@ Foundational state applied **locally**: the versioned/encrypted S3 state bucket,
 
 ### Scope 2a - Infrastructure & Networking
 
-The VPC layer provisioned by CI: public/private subnets across AZs, IGW, NAT gateway, the AWS-managed EKS control plane + ENIs, the managed node group, and the auto-created load-balancer / cluster security groups.
+The VPC layer provisioned by CI: public/private subnets across AZs, IGW, NAT gateway, the AWS-managed EKS control plane + ENIs, the managed node group, and the auto-created load-balancer / cluster security groups. This layer also holds the RDS PostgreSQL database (in the private subnets, encrypted with a customer-managed KMS key, TLS enforced), with its master credentials stored in AWS Secrets Manager.
 
 ![Scope 2a - Networking](Documents/EKS-Scope2a-Networking.drawio.png)
 
 ### Scope 2b - Runtime Architecture
 
-What runs **inside** the cluster: ArgoCD (GitOps), the memos Deployment/Service, the NGINX ingress controller, cert-manager TLS (`memos-tls`), ExternalDNS → Route 53, and the Prometheus/Grafana monitoring stack.
+What runs **inside** the cluster: ArgoCD (GitOps) and ArgoCD Image Updater, the memos Deployment/Service, the NGINX ingress controller, cert-manager TLS (`memos-tls`), ExternalDNS → Route 53, and the Prometheus/Grafana monitoring stack. External Secrets Operator syncs the database credentials from AWS Secrets Manager into a `memos-db` secret the app reads, and the memos pods connect out to the RDS PostgreSQL database (Scope 2a) over TLS.
 
 ![Scope 2b - Runtime Architecture](Documents/EKS-Scope2b-Runtime-Architecture.drawio.png)
 
 ### Scope 3 - Security-Build Pipeline (CI)
 
-The `security-build.yaml` pipeline: OIDC keyless auth, Checkov IaC scan, image build + push to ECR, ECR + Trivy CVE scans (Trivy **gates** the build), then the image-tag bump that hands off to ArgoCD in Scope 2b.
+The `security-build.yaml` pipeline: OIDC keyless auth, Checkov IaC scan, image build + push to ECR, ECR + Trivy CVE scans (Trivy **gates** the build). The pipeline stops there. ArgoCD Image Updater (Scope 2b) detects the new image in ECR and rolls it out, so nothing is ever committed to the protected branch.
 
 ![Scope 3 - Security-Build Pipeline](Documents/EKS-Scope3-SecurityBuild.drawio.png)
 
@@ -200,7 +210,7 @@ The bootstrap output lists 4 Route 53 nameservers. Add them as NS records at you
 Because this is a fork, enable workflows in your repo's **Actions** tab. Then run them in order:
 
 1. **`cluster.yaml`**: provisions the VPC + EKS cluster (Terragrunt) and installs NGINX ingress, cert-manager issuers, the ArgoCD Application, and the Grafana dashboards.
-2. **`security-build.yaml`**: builds your image, scans it (Checkov + Trivy), pushes it to ECR, and bumps the image tag in git; ArgoCD then rolls that image out.
+2. **`security-build.yaml`**: builds your image, scans it (Checkov + Trivy), and pushes it to ECR. ArgoCD Image Updater then detects the new image and rolls it out (no git commit).
 
 From the terminal:
 
@@ -218,7 +228,17 @@ gh run watch         # live-follow the latest run until it finishes
 gh run view --log    # full logs of a run
 ```
 
-> Until `security-build.yaml` has pushed your fork's image and bumped the tag, the app pods sit in `ImagePullBackOff`: the committed tag points at an image that isn't in your ECR yet. ArgoCD rolls them out once it completes. cert-manager certificate validation can take several minutes.
+> Until `security-build.yaml` has pushed your fork's image to ECR, the app pods sit in `ImagePullBackOff`, since the placeholder tag points at an image that isn't there yet. ArgoCD Image Updater rolls them out once the image lands (within a couple of minutes of the push). cert-manager certificate validation can also take several minutes.
+
+**Point the app at the database** (once `cluster.yaml` has provisioned RDS)
+
+`cluster.yaml` stands up the RDS database as part of the infrastructure. Read its outputs and put them in the chart so the app can connect:
+
+```bash
+cd Terraform/infra/live/rds && terragrunt output
+```
+
+Set `database.host` to the `db_address` value and `database.awsSecretName` to the `master_user_secret_arn` value in `helm/memos-chart/values.yaml`, then commit and push. External Secrets Operator builds the connection string from the Secrets Manager secret, and ArgoCD rolls out the app pointed at Postgres. (Leave `database.enabled: true`; set it to `false` only for the local SQLite path.)
 
 **7. Verify**
 
@@ -333,7 +353,8 @@ helm upgrade --install nginx-ingress-controller nginx-stable/nginx-ingress \
 ```bash
 helm install memos ./helm/memos-chart \
   --set image.repository=memos --set image.tag=local \
-  --set ingress.clusterIssuer=letsencrypt-staging
+  --set ingress.clusterIssuer=letsencrypt-staging \
+  --set database.enabled=false   # use the app's built-in SQLite locally (no RDS / External Secrets)
 
 kubectl apply -f manifests/nginx-servicemonitor.yaml
 kubectl create configmap nginx-ingress-dashboard \
@@ -464,7 +485,11 @@ Evidence from a live end-to-end deployment: the CI/CD pipelines, the AWS infrast
 
 - **Keyless CI via OIDC, with an immutable subject**: GitHub Actions assumes `memos_github_role` through the GitHub OIDC provider; no static AWS keys are stored. The trust policy pins GitHub's *immutable* subject claim, `repo:<owner>@<owner_id>/<repo>@<repo_id>:ref:refs/heads/main`, which encodes the numeric owner and repo IDs, so it stays bound to this exact repository across renames and can't be hijacked by namespace recycling. Audience is `sts.amazonaws.com`, and only the `main` branch can assume the role.
 - **Least-privilege IAM**: the CI role uses a tight, hand-written policy (`github-tight-policy.json.tftpl`), not `AdministratorAccess`.
-- **IRSA for in-cluster controllers**: cert-manager and ExternalDNS receive AWS permissions via IAM Roles for Service Accounts, each scoped to the specific Route 53 hosted zone. Pods, not nodes, hold narrowly-scoped credentials.
+- **IRSA for in-cluster controllers**: cert-manager, ExternalDNS, External Secrets Operator, and ArgoCD Image Updater each receive AWS permissions via IAM Roles for Service Accounts, scoped to exactly what each needs (a specific Route 53 hosted zone, one Secrets Manager secret, or read on one ECR repository). Pods, not nodes, hold narrowly-scoped credentials.
+- **Managed database security**: the RDS Postgres database runs in private subnets, reachable only from the cluster's security group, encrypted at rest with a customer-managed KMS key, and with TLS enforced in transit. Its master password is generated and held by RDS in AWS Secrets Manager, so it never appears in Terraform code or state.
+- **Secrets kept out of git**: External Secrets Operator syncs the database credentials from Secrets Manager into a Kubernetes secret at runtime, so no credentials are committed anywhere.
+- **Pre-commit secret scanning**: a gitleaks pre-commit hook blocks secrets before they can enter git history, backing up the CI-side scans.
+- **Protected main branch + pinned Actions**: `main` requires a pull request to change, and third-party GitHub Actions are pinned to commit SHAs rather than moving tags.
 - **Encrypted, locked remote state**: the S3 backend uses server-side encryption (AES256), bucket versioning, a full public-access block, and native S3 lockfile locking (`use_lockfile`).
 - **Supply-chain-aware image scanning**: ECR basic scanning on push (`scan_on_push`) plus a Trivy scan that **gates** the build on CRITICAL/HIGH findings; the Trivy action is pinned to a commit SHA (not a moving tag) to reduce action-supply-chain risk.
 - **IaC scanning**: Checkov runs over the Terraform in CI, surfacing misconfigurations (soft-fail, so it reports without blocking).
