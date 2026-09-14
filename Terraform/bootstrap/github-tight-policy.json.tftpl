@@ -4,6 +4,9 @@
 		{
 			"Effect": "Allow",
 			"Action": [
+				"secretsmanager:CreateSecret",
+				"secretsmanager:TagResource",
+				"secretsmanager:DeleteSecret",
 				"secretsmanager:DescribeSecret",
 				"secretsmanager:GetSecretValue",
 				"secretsmanager:ListSecretVersionIds",
@@ -145,6 +148,8 @@
 				"kms:ListAliases",
 				"kms:CreateGrant",
 				"kms:DescribeKey",
+				"kms:Decrypt",
+				"kms:GenerateDataKey",
 				"kms:EnableKeyRotation",
 				"kms:GetKeyRotationStatus",
 				"kms:GetKeyPolicy",
