@@ -1,8 +1,8 @@
 ## STAGE 1: BUILD
 
-FROM golang@sha256:512690a5660563b57d37ecc31129e7f136e831db2aed24a1dbeb8ad7380dc0fa AS builder
+FROM golang@sha256:b08bc99468058b6d8a0ada17fa54996b910d5e82a7e95bee0372e3bd98415258 AS builder
 # Base image is Go because that is the language
-# Sha hash for 1.27-bookworm
+# Sha hash for 1.27.3-bookworm (must be >= the version in go.mod, currently 1.27.2)
 # 1.27 since that is the Go version specified in 'go.mod'
 # '-bookworm' is a go image tag for a specific Debian release (the OS Go is built on), it's the most stable current release
 # 'AS builder' means we named this stage 'builder'
@@ -11,18 +11,21 @@ WORKDIR /app/memos
 # This is the directory where we will run everything in
 
 RUN apt-get update && apt-get install -y curl && \
-    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    curl -fsSL https://deb.nodesource.com/setup_24.x | bash - && \
     apt-get install -y nodejs && \
-    npm install -g pnpm
+    npm install -g pnpm@11.0.1
 # apt-get update: refreshes the package list
 # apt-get install -y curl means we install curl
-# Using curl in the next line we add the NodeSource repo for Node 22 to apt
+# Using curl in the next line we add the NodeSource repo for Node 24 to apt
 # apt-get install -y nodejs npm: installs Node and npm
-# npm install -g pnpm: uses npm to install pnpm globally
+# npm install -g pnpm@11.0.1: uses npm to install pnpm globally, pinned to the
+# version in web/package.json's packageManager field
 
-COPY web/package.json ./web/
-COPY web/pnpm-lock.yaml ./web/
+COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./web/
+COPY web/patches ./web/patches
 # Copied pnpm dependency files to container filesystem
+# pnpm-workspace.yaml and patches/ are needed too: they declare a patched dependency
+# that the lockfile expects, so pnpm install fails without them
 # These are instruction for pnpm on what to install and which version
 
 RUN --mount=type=cache,target=/root/.pnpm-store \

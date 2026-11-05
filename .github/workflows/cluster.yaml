@@ -56,9 +56,16 @@ jobs:
           kubectl apply -f manifests/clusterIssuer-staging.yaml
 
       - name: Apply Application
+        # The RDS-managed secret ARN changes every time the DB is recreated, so it is read
+        # from the rds Terraform output and injected as a Helm parameter at deploy time
+        # instead of being hardcoded in values.yaml.
         run: |
           aws eks update-kubeconfig --name memos-eks-cluster --region ${{ vars.AWS_REGION }}
-          kubectl apply -f manifests/memos-application.yaml
+          DB_SECRET_ARN=$(cd Terraform/infra/live/rds && terragrunt output -raw master_user_secret_arn)
+          test -n "$DB_SECRET_ARN"
+          DB_SECRET_ARN="$DB_SECRET_ARN" yq \
+            '.spec.source.helm.parameters = [{"name": "database.awsSecretName", "value": strenv(DB_SECRET_ARN), "forceString": true}]' \
+            manifests/memos-application.yaml | kubectl apply -f -
 
       - name: Install Helm
         uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4  # v4.3.1
