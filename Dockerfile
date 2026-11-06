@@ -49,8 +49,17 @@ RUN cd web && pnpm release
 # so this command was ran after copying that
 # Also this way, if web folder changes we don't need to reinstall dependencies
 
-RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o build/memos ./cmd/memos
+ARG VERSION
+ARG COMMIT=unknown
+# memos refuses to start without a calendar version (YY.MM.D-dev.<sha7> or a release tag).
+# It normally reads that from git metadata, but .git is not in the build context, so it is
+# passed in as a build arg instead (see the build step in security-build.yaml).
+RUN : "${VERSION:?Pass VERSION, e.g. from app/memos/scripts/release_version.sh development-version}" && \
+    CGO_ENABLED=0 go build \
+    -ldflags="-s -w -X github.com/usememos/memos/internal/version.Version=${VERSION} -X github.com/usememos/memos/internal/version.Commit=${COMMIT}" \
+    -o build/memos ./cmd/memos
 # create binary file using input from './cmd/memos' and output 'build/memos'
+# '-X ...version.Version=' stamps the version into the binary at build time
 # '-ldflags="-s -w" ' means we are removing debug metadata. This is not needed in prod and helps trim binary size.
 # CGO_ENABLED=0 turns off dynamic linking, meaning the binary is fully self-contained and does not depend on any shared libraries
 

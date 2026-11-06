@@ -46,7 +46,12 @@ jobs:
         # --provenance=false / --sbom=false: newer Docker attaches attestation manifests, which
         # turns the pushed tag into an image index. ECR basic scanning can't scan an index
         # (ScanNotFoundException), so build a plain single-platform image instead.
-        run: docker build --provenance=false --sbom=false -t ${{ vars.ECR_REPO }}:${{ github.sha }} -f Dockerfile ./app/memos
+        run: |
+          VERSION=$(bash app/memos/scripts/release_version.sh development-version)
+          COMMIT=$(git -C app/memos rev-parse HEAD)
+          docker build --provenance=false --sbom=false \
+            --build-arg VERSION="$VERSION" --build-arg COMMIT="$COMMIT" \
+            -t ${{ vars.ECR_REPO }}:${{ github.sha }} -f Dockerfile ./app/memos
 
       - name: Push image to ECR
         run: docker push ${{ vars.ECR_REPO }}:${{ github.sha }}
