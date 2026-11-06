@@ -1,0 +1,13 @@
+apiVersion: argocd-image-updater.argoproj.io/v1alpha1
+kind: ImageUpdater
+metadata:
+  name: memos
+  namespace: argocd
+spec:
+  # Image Updater v1.x only acts on Applications referenced by an ImageUpdater CR.
+  # useAnnotations makes it read the argocd-image-updater.argoproj.io/* annotations
+  # already set on the memos Application (manifests/memos-application.yaml), so the
+  # image list, update strategy and argocd write-back stay defined there.
+  applicationRefs:
+    - namePattern: memos
+      useAnnotations: true
