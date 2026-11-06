@@ -34,6 +34,28 @@ jobs:
       - name: Install Helm
         uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4  # v4.3.1
 
+      - name: Remove the memos app (while its controllers are still running)
+        run: |
+          CLUSTERS=$(aws eks list-clusters --region ${{ vars.AWS_REGION }} --query "clusters" --output text)
+          if echo "$CLUSTERS" | grep -qw memos-eks-cluster; then
+            aws eks update-kubeconfig --name memos-eks-cluster --region ${{ vars.AWS_REGION }}
+
+            # 1. Stop Image Updater and Argo CD from re-creating things (selfHeal is on)
+            kubectl delete imageupdater memos -n argocd --wait --timeout=60s || true
+            kubectl delete application memos -n argocd --wait --timeout=60s || true
+
+            # 2. Delete the app's namespace while External Secrets is still running, so the
+            #    ExternalSecret's finalizer can clear. Not silenced: if this hangs, stop here.
+            kubectl delete namespace memos --wait --timeout=180s
+
+            # 3. Delete the remaining ingresses so ExternalDNS (policy: sync) removes their
+            #    Route53 records, then give it time to notice (it checks every 60s).
+            kubectl delete ingress --all -A --wait --timeout=60s || true
+            sleep 90
+          else
+            echo "No memos-eks-cluster present; skipping app cleanup."
+          fi
+
       - name: Remove NGINX ingress (frees its load balancer)
         run: |
           CLUSTERS=$(aws eks list-clusters --region ${{ vars.AWS_REGION }} --query "clusters" --output text)
