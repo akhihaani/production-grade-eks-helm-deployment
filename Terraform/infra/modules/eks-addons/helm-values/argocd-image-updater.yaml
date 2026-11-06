@@ -24,4 +24,8 @@ authScripts:
   scripts:
     ecr-login.sh: |
       #!/bin/sh
-      aws ecr --region eu-west-2 get-login-password
+      # The pod's root filesystem is read-only and HOME (/app) is not writable, but the aws
+      # CLI writes a credentials cache under $HOME/.aws. /tmp is a writable emptyDir.
+      export HOME=/tmp
+      # ext: scripts must print "username:password"; for ECR the username is always AWS.
+      echo "AWS:$(aws ecr --region eu-west-2 get-login-password)"
