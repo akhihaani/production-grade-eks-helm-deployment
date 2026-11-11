@@ -53,6 +53,15 @@ jobs:
             --build-arg VERSION="$VERSION" --build-arg COMMIT="$COMMIT" \
             -t ${{ vars.ECR_REPO }}:${{ github.sha }} -f Dockerfile ./app/memos
 
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
+        with:
+          image-ref: ${{ vars.ECR_REPO }}:${{ github.sha }}
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: true
+
       - name: Push image to ECR
         run: docker push ${{ vars.ECR_REPO }}:${{ github.sha }}
 
@@ -88,15 +97,6 @@ jobs:
               --query 'imageScanFindings.findings[].{CVE:name,Severity:severity}' --output table
             echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Trivy image scan
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
-        with:
-          image-ref: ${{ vars.ECR_REPO }}:${{ github.sha }}
-          format: table
-          severity: CRITICAL,HIGH
-          exit-code: '1'
-          ignore-unfixed: true
 
       - name: Provide App URL
         if: always()
